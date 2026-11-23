@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rhythm Break Community</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; border-radius: 0 !important; }
+  :root {
+    --bg: #09090c; --line: #26262f; --text: #f3f3f6; --muted: #9494a3; --yellow: #f7c531;
+  }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: Nunito, system-ui, sans-serif; font-weight: 600; overflow: hidden;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(45deg, rgba(255,255,255,.012) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.012) 75%),
+      linear-gradient(45deg, rgba(255,255,255,.012) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.012) 75%);
+    background-size: 36px 36px; background-position: 0 0, 18px 18px;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* Header */
+  .top {
+    position: relative; z-index: 2; height: 46px; display: flex; align-items: center; gap: 18px;
+    padding: 0 14px; background: #0e0e13; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: baseline; gap: 8px; cursor: pointer; user-select: none; }
+  .brand b { font-style: italic; font-weight: 900; font-size: 19px; letter-spacing: .5px; }
+  .brand span { background: var(--yellow); color: #111; font-size: 10px; font-weight: 900; padding: 2px 6px; letter-spacing: 1px; }
+  nav { display: flex; height: 100%; }
+  .nav {
+    background: none; border: 0; color: var(--muted); font-weight: 800; text-transform: uppercase;
+    letter-spacing: .6px; font-size: 13px; padding: 0 14px; height: 100%; border-bottom: 3px solid transparent;
+  }
+  .nav.on { color: #fff; border-bottom-color: var(--yellow); }
+  .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .userchip {
+    display: flex; align-items: center; gap: 8px; background: #15151c; border: 1px solid #2c2c36;
+    padding: 4px 10px 4px 4px; cursor: pointer;
+  }
+  .av {
+    width: 30px; height: 30px; background: #2a2a35; display: grid; place-items: center;
+    font-weight: 900; font-size: 12px; overflow: hidden; flex-shrink: 0;
+  }
+  .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Buttons */
+  .btn {
+    background: #1b1b23; border: 1px solid #33333f; padding: 8px 14px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .5px; font-size: 13px;
+  }
+  .btn:hover { border-color: #666; }
+  .btn.primary { background: var(--yellow); border-color: var(--yellow); color: #111; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { border-color: #7a2a2f; color: #ff7b82; }
+  .btn.big { width: 100%; padding: 13px; font-size: 15px; margin-top: 14px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Layout */
+  main { height: calc(100vh - 46px); position: relative; z-index: 1; }
+  .page { height: 100%; overflow: auto; padding: 26px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  .explore { display: grid; grid-template-columns: 340px 1fr; height: 100%; }
+  .detail {
+    border-right: 1px solid var(--line); overflow: auto; padding: 22px;
+    background: linear-gradient(180deg, #0f0f14, #0a0a0e);
+  }
+  .list { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 16px; border-bottom: 1px solid var(--line); background: #0e0e13;
+  }
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    background: none; border: 0; color: var(--muted); font-weight: 800; padding: 8px 12px;
+    text-transform: uppercase; font-size: 12px; letter-spacing: .6px; border-bottom: 3px solid transparent;
+  }
+  .tab.on { color: #fff; border-bottom-color: var(--yellow); }
+  input[type=text], input[type=search], textarea {
+    background: #0b0b0f; border: 1px solid #333; padding: 9px 11px; outline: none; width: 100%;
+  }
+  input:focus, textarea:focus { border-color: var(--yellow); }
+  .search { width: 240px; }
+  .cards { overflow: auto; flex: 1; padding: 12px 14px 30px 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px; }
+  .sect { margin: 26px 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+
+  /* Colour themes (rotate per pack) */
+  .c0 { --c: #e53945; --cs: rgba(229,57,69,.55); }
+  .c1 { --c: #8e44ec; --cs: rgba(142,68,236,.55); }
+  .c2 { --c: #33d17a; --cs: rgba(51,209,122,.45); }
+  .c3 { --c: #f7c531; --cs: rgba(247,197,49,.5); }
+  .c4 { --c: #3a8dff; --cs: rgba(58,141,255,.5); }
+
+  /* Cards */
+  .card {
+    display: flex; height: 84px; margin-bottom: 8px; border: 2px solid var(--c);
+    background: linear-gradient(90deg, var(--cs) 0%, rgba(12,12,16,.94) 70%);
+    cursor: pointer; position: relative; overflow: hidden;
+  }
+  .card.active { outline: 2px solid #fff; outline-offset: -5px; }
+  .card:hover { filter: brightness(1.1); }
+  .cthumb {
+    width: 80px; flex-shrink: 0; background: #000; display: grid; place-items: center;
+    font-weight: 900; font-size: 22px; overflow: hidden; border-right: 2px solid var(--c);
+  }
+  .cthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cinfo { padding: 8px 12px; min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .ctitle { font-size: 17px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cby { color: #e6e6ee; font-size: 13px; }
+  .cstats { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .cdel { position: absolute; right: 8px; top: 8px; padding: 6px 10px; font-size: 11px; }
+
+  /* Detail panel */
+  .dbanner { width: 100%; height: 110px; object-fit: cover; display: block; border: 2px solid var(--c); margin-bottom: -6px; }
+  .dthumb {
+    width: 200px; height: 200px; margin: 0 auto; border: 3px solid var(--c); background: #000;
+    display: grid; place-items: center; font-size: 48px; font-weight: 900; overflow: hidden;
+    box-shadow: 0 0 40px -10px var(--c);
+  }
+  .dthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dtitle { font-size: 24px; font-weight: 900; text-align: center; margin: 14px 0 4px; line-height: 1.15; }
+  .dtype { text-align: center; color: var(--yellow); font-weight: 800; font-size: 14px; }
+  .dstats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 18px 0 6px; color: #ddd; font-size: 14px; }
+  .tracklist { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .track {
+    display: flex; align-items: center; gap: 10px; background: #15151c; border: 1px solid #24242d;
+    color: #eee; padding: 8px 10px; text-align: left; font-weight: 700;
+  }
+  .track:hover { border-color: var(--yellow); }
+  .track i { font-style: normal; color: var(--yellow); width: 22px; }
+  .by { margin-top: 16px; color: var(--muted); font-size: 13px; text-align: center; }
+  .by a { color: #fff; cursor: pointer; text-decoration: underline; }
+
+  /* Publish */
+  .dropzone {
+    border: 2px dashed #3b3b48; background: #0e0e13; padding: 50px 20px; text-align: center;
+    cursor: pointer; transition: .15s;
+  }
+  .dropzone.over { border-color: var(--yellow); background: #17150b; }
+  .dz-big { font-size: 24px; font-weight: 900; letter-spacing: .5px; }
+  .dz-small { color: var(--muted); margin-top: 8px; font-size: 14px; }
+  .draft {
+    display: grid; grid-template-columns: 200px 1fr; gap: 18px; margin-top: 18px;
+    background: #101016; border-left: 4px solid var(--yellow); padding: 16px;
+  }
+  .dr-icon {
+    width: 200px; height: 200px; background: #000; display: grid; place-items: center;
+    overflow: hidden; border: 2px solid #333; font-size: 44px; font-weight: 900;
+  }
+  .dr-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dr-banner {
+    width: 200px; height: 70px; object-fit: cover; margin-top: 10px; border: 2px solid #333;
+    display: grid; place-items: center; color: #666; font-size: 12px; font-weight: 700;
+  }
+  .field { display: block; margin-bottom: 10px; font-size: 12px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+  .field input, .field textarea { margin-top: 5px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+  .field textarea { min-height: 60px; resize: vertical; }
+  .dr-tracks { margin: 6px 0 12px; padding-left: 18px; color: #ccc; font-size: 14px; max-height: 120px; overflow: auto; }
+  .dr-actions { display: flex; gap: 8px; }
+  .status { color: var(--muted); margin-top: 8px; font-size: 13px; }
+
+  /* Profile */
+  .profile-head { display: flex; gap: 18px; align-items: center; background: #101016; border: 1px solid var(--line); padding: 18px; }
+  .profile-head .av { width: 96px; height: 96px; font-size: 30px; }
+  .pname { font-size: 24px; font-weight: 900; }
+  .pregion, .pcount { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .setting { background: #101016; border: 1px solid var(--line); padding: 16px; margin-top: 18px; }
+  .setting label { display: flex; gap: 8px; align-items: center; margin-top: 10px; color: #ddd; font-size: 14px; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .center { max-width: 460px; margin: 60px auto; text-align: center; }
+  .muted { color: var(--muted); }
+  .cards-plain .card { cursor: default; }
+
+  /* Mobile */
+  @media (max-width: 800px) {
+    body { overflow: auto; }
+    main { height: auto; min-height: calc(100vh - 46px); }
+    .explore { grid-template-columns: 1fr; height: auto; }
+    .detail { border-right: 0; border-bottom: 1px solid var(--line); }
+    .list { height: auto; }
+    .cards { overflow: visible; }
+    .search { width: 140px; }
+    .draft { grid-template-columns: 1fr; }
+    .dr-icon, .dr-banner { width: 100%; }
+    .nav { padding: 0 8px; font-size: 11px; }
+    .brand span { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO — preencha com os dados do seu projeto Supabase
+   (Project Settings > API)
+   ===================================================================== */
+const SUPABASE_URL = 'COLE_SUA_URL_AQUI';          // ex: https://abcd1234.supabase.co
+const SUPABASE_ANON_KEY = 'COLE_SUA_CHAVE_ANON_AQUI';
+const BUCKET = 'rbpacks';
+
+const CONFIGURED = !SUPABASE_URL.startsWith('COLE_') && !SUPABASE_ANON_KEY.startsWith('COLE_');
+const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/* ---------- estado ---------- */
+const COLORS = ['c0', 'c1', 'c2', 'c3', 'c4'];
+const state = {
+  route: 'explorar',
+  user: null,
+  profile: null,
+  packs: [],
+  filter: 'all',
+  query: '',
+  selectedId: null,
+  drafts: [],
+  viewUser: null,      // null = carregando, false = não encontrado, objeto = perfil
+  viewUserId: null,
+};
+const audio = new Audio();
+
+/* ---------- helpers ---------- */
+const $ = (s, root = document) => root.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => new Intl.NumberFormat('pt-BR').format(n || 0);
+const initials = (s) => (String(s || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('') || '?').toUpperCase();
+const safeName = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'arquivo';
+const fileTitle = (s) => String(s).replace(/[\\/:*?"<>|]/g, '').trim() || 'pacote';
+const stripExt = (n) => n.replace(/\.[^.]+$/, '');
+const colorFor = (id) => COLORS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const publicUrl = (path) => sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)));
+const isAudio = (n) => /\.(mp3|ogg|wav|m4a)$/i.test(n);
+const isImage = (n) => /\.(png|jpe?g|webp|gif)$/i.test(n);
+const MIME = { mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+const typed = (blob, name) => new Blob([blob], { type: MIME[name.split('.').pop().toLowerCase()] || 'application/octet-stream' });
+const avatarHTML = (url, name, cls = 'av') =>
+  url ? `<div class="${cls}"><img src="${esc(url)}" alt="" referrerpolicy="no-referrer"></div>`
+      : `<div class="${cls}">${esc(initials(name))}</div>`;
+
+/* ---------- autenticação (Google via Supabase) ---------- */
+const login = () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href.split('#')[0] } });
+const logout = () => sb.auth.signOut();
+
+async function setUser(user) {
+  state.user = user;
+  state.profile = null;
+  if (user) await ensureProfile();
+}
+
+async function ensureProfile() {
+  const u = state.user, m = u.user_metadata || {};
+  const name = m.full_name || m.name || (u.email || '').split('@')[0] || 'Usuário';
+  await sb.from('profiles').upsert({ id: u.id, name, avatar_url: m.avatar_url || m.picture || null }, { onConflict: 'id' });
+  const { data } = await sb.from('profiles').select('*').eq('id', u.id).maybeSingle();
+  state.profile = data;
+}
+
+/* ---------- dados ---------- */
+async function loadPacks() {
+  const { data, error } = await sb.from('packs')
+    .select('*, profiles(name, avatar_url, region, show_region)')
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  state.packs = data || [];
+}
+
+const filteredPacks = () => {
+  const q = state.query.trim().toLowerCase();
+  return state.packs.filter(p =>
+    (state.filter === 'all' || p.kind === state.filter) &&
+    (!q || p.title.toLowerCase().includes(q) ||
+      (p.mapper || '').toLowerCase().includes(q) ||
+      (p.profiles?.name || '').toLowerCase().includes(q)));
+};
+
+/* ---------- leitura de .rbpack e detecção automática ---------- */
+function splitMedia(items) {
+  const tracks = items.filter(i => isAudio(i.name));
+  const images = items.filter(i => isImage(i.name));
+  const banner = images.find(i => /banner/i.test(i.name)) || null;
+  const icon = images.find(i => /icon/i.test(i.name)) || images.find(i => i !== banner) || null;
+  return { tracks, icon, banner };
+}
+
+async function draftFromArchive(file) {
+  const zip = await JSZip.loadAsync(file);
+  const items = [];
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir || entry.name.startsWith('__MACOSX')) continue;
+    if (!isAudio(entry.name) && !isImage(entry.name)) continue;
+    const name = entry.name.split('/').pop();
+    items.push({ name, blob: typed(await entry.async('blob'), name) });
+  }
+  const { tracks, icon, banner } = splitMedia(items);
+  if (!tracks.length) throw new Error('não encontrei nenhum .mp3 dentro do arquivo');
+  return makeDraft({ title: stripExt(file.name), sourceBlob: file, tracks, icon, banner });
+}
+
+function draftFromLoose(loose) {
+  const items = [...loose.tracks, ...loose.images].map(f => ({ name: f.name, blob: typed(f, f.name) }));
+  const { tracks, icon, banner } = splitMedia(items);
+  const title = tracks.length > 1 ? 'Nova playlist' : stripExt(tracks[0].name);
+  return makeDraft({ title, sourceBlob: null, tracks, icon, banner });
+}
+
+function makeDraft({ title, sourceBlob, tracks, icon, banner }) {
+  return {
+    id: uuid(),
+    title,
+    mapper: state.profile?.name || '',
+    description: '',
+    kind: tracks.length > 1 ? 'playlist' : 'song',
+    sourceBlob, tracks, icon, banner,
+    iconUrl: icon ? URL.createObjectURL(icon.blob) : '',
+    bannerUrl: banner ? URL.createObjectURL(banner.blob) : '',
+    busy: false,
+  };
+}
+
+async function handleFiles(files) {
+  const loose = { tracks: [], images: [] };
+  for (const f of files) {
+    const n = f.name.toLowerCase();
+    try {
+      if (n.endsWith('.rbpack') || n.endsWith('.zip')) state.drafts.push(await draftFromArchive(f));
+      else if (isAudio(n)) loose.tracks.push(f);
+      else if (isImage(n)) loose.images.push(f);
+    } catch (err) {
+      alert(`Não consegui ler "${f.name}": ${err.message}`);
+    }
+  }
+  if (loose.tracks.length) state.drafts.push(draftFromLoose(loose));
+  render();
+}
+
+/* ---------- publicar ---------- */
+async function publishDraft(id) {
+  const d = state.drafts.find(x => x.id === id);
+  if (!d || d.busy) return;
+  const st = (msg) => { const el = $('#st-' + id); if (el) el.textContent = msg; };
+  if (!state.user) return login();
+  if (!d.title.trim()) return st('Dê um nome para a publicação.');
+
+  d.busy = true;
+  const uploaded = [];
+  const up = async (path, blob) => {
+    const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+      contentType: blob.type || 'application/octet-stream', upsert: false,
+    });
+    if (error) throw error;
+    uploaded.push(path);
+    return path;
+  };
+
+  try {
+    st('Enviando arquivos…');
+    const base = `${state.user.id}/${d.id}`;
+    const rbBlob = d.sourceBlob ?? await buildRbpack(d);
+    const file_path = await up(`${base}/${safeName(d.title)}.rbpack`, rbBlob);
+
+    const tracks = [];
+    for (let i = 0; i < d.tracks.length; i++) {
+      const t = d.tracks[i];
+      const path = await up(`${base}/tracks/${String(i + 1).padStart(2, '0')}-${safeName(t.name)}`, t.blob);
+      tracks.push({ name: t.name, path });
+    }
+    const icon_path = d.icon ? await up(`${base}/icon-${safeName(d.icon.name)}`, d.icon.blob) : null;
+    const banner_path = d.banner ? await up(`${base}/banner-${safeName(d.banner.name)}`, d.banner.blob) : null;
+
+    st('Salvando publicação…');
+    const { error } = await sb.from('packs').insert({
+      id: d.id,
+      owner_id: state.user.id,
+      kind: d.kind,
+      title: d.title.trim(),
+      mapper: d.mapper.trim(),
+      description: d.description.trim(),
+      file_path, icon_path, banner_path, tracks,
+    });
+    if (error) throw error;
+
+    state.drafts = state.drafts.filter(x => x.id !== id);
+    state.selectedId = d.id;
+    await loadPacks();
+    location.hash = '#explorar';
+  } catch (err) {
+    d.busy = false;
+    if (uploaded.length) await sb.storage.from(BUCKET).remove(uploaded);
+    st('Erro: ' + (err.message || err));
+  }
+}
+
+// Se o arquivo veio solto (mp3 + imagens), monta um .rbpack (zip) com o conteúdo
+async function buildRbpack(d) {
+  const zip = new JSZip();
+  d.tracks.forEach(t => zip.file(t.name, t.blob));
+  if (d.icon) zip.file(d.icon.name, d.icon.blob);
+  if (d.banner) zip.file(d.banner.name, d.banner.blob);
+  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+}
+
+/* ---------- ações do usuário ---------- */
+async function downloadPack(id) {
+  const p = state.packs.find(x => x.id === id);
+  if (!p) return;
+  try {
+    const res = await fetch(publicUrl(p.file_path));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: `${fileTitle(p.title)}.rbpack` });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    sb.rpc('increment_downloads', { pack_id: id });
+    p.downloads = (p.downloads || 0) + 1;
+    selectPack(id);
+    const cards = $('#cards');
+    if (cards) cards.innerHTML = cardsHTML();
+  } catch (err) {
+    alert('Não consegui baixar: ' + err.message);
+  }
+}
+
+function play(url) {
+  if (audio.src === url && !audio.paused) return audio.pause();
+  audio.src = url;
+  audio.play().catch(err => alert('Não consegui tocar: ' + err.message));
+}
+
+async function deletePack(id) {
+  const p = state.packs.find(x => x.id === id);
+  if (!p || !confirm(`Apagar "${p.title}"? Isso não pode ser desfeito.`)) return;
+  const { error } = await sb.from('packs').delete().eq('id', id);
+  if (error) return alert('Erro: ' + error.message);
+  const paths = [p.file_path, p.icon_path, p.banner_path, ...(p.tracks || []).map(t => t.path)].filter(Boolean);
+  await sb.storage.from(BUCKET).remove(paths);
+  await loadPacks();
+  render();
+}
+
+async function saveRegion() {
+  const show = $('#showRegion').checked;
+  const region = show ? ($('#region').value.trim() || null) : null; // só guarda se permitido
+  const { error } = await sb.from('profiles').update({ region, show_region: show }).eq('id', state.user.id);
+  if (error) return alert('Erro: ' + error.message);
+  state.profile = { ...state.profile, region, show_region: show };
+  await loadPacks();
+  render();
+}
+
+function selectPack(id) {
+  state.selectedId = id;
+  const p = state.packs.find(x => x.id === id);
+  const d = $('.detail');
+  if (!d) { location.hash = '#explorar'; return; }   // clicou num card fora do explorar: abre lá
+  if (p) d.innerHTML = detailHTML(p);
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+}
+
+const ACTIONS = {
+  go: (arg) => { location.hash = '#' + arg; },
+  login: () => login(),
+  logout: () => logout(),
+  pick: () => $('#fileinput')?.click(),
+  select: (id) => selectPack(id),
+  filter: (f) => { state.filter = f; render(); },
+  download: (id) => downloadPack(id),
+  play: (url) => play(url),
+  user: (id) => { location.hash = '#user/' + id; },
+  publish: (id) => publishDraft(id),
+  removeDraft: (id) => { state.drafts = state.drafts.filter(d => d.id !== id); render(); },
+  delete: (id) => deletePack(id),
+  saveRegion: () => saveRegion(),
+};
+
+/* ---------- roteamento ---------- */
+async function onRoute() {
+  state.route = location.hash.replace(/^#\/?/, '') || 'explorar';
+  if (state.route.startsWith('user/')) {
+    const id = state.route.slice(5);
+    if (state.viewUserId !== id) {
+      state.viewUserId = id;
+      state.viewUser = null;
+      render();
+      const { data } = await sb.from('profiles').select('*').eq('id', id).maybeSingle();
+      if (state.viewUserId === id) { state.viewUser = data || false; render(); }
+      return;
+    }
+  }
+  render();
+}
+
+/* ---------- telas ---------- */
+function headerHTML() {
+  const page = state.route.split('/')[0];
+  const nav = (id, label) => `<button class="nav ${page === id ? 'on' : ''}" data-act="go" data-arg="${id}">${label}</button>`;
+  const right = state.user
+    ? `<button class="userchip" data-act="go" data-arg="perfil">${avatarHTML(state.profile?.avatar_url, state.profile?.name)}<span>${esc(state.profile?.name || 'Perfil')}</span></button>
+       <button class="btn" data-act="logout">Sair</button>`
+    : `<button class="btn primary" data-act="login">Entrar com Google</button>`;
+  return `<header class="top">
+    <div class="brand" data-act="go" data-arg="explorar"><b>RHYTHM BREAK</b><span>COMMUNITY</span></div>
+    <nav>${nav('explorar', 'Explorar')}${nav('publicar', 'Publicar')}${state.user ? nav('perfil', 'Perfil') : ''}</nav>
+    <div class="right">${right}</div>
+  </header>`;
+}
+
+function render() {
+  if (!CONFIGURED) {
+    $('#app').innerHTML = `<div class="page"><div class="wrap" style="margin-top:40px">
+      <h2>Falta configurar o Supabase</h2>
+      <p class="muted">Abra este arquivo e preencha <b>SUPABASE_URL</b> e <b>SUPABASE_ANON_KEY</b> no começo do script.
+      Antes, rode o arquivo <b>setup.sql</b> no SQL Editor do seu projeto.</p></div></div>`;
+    return;
+  }
+  const page = state.route.split('/')[0];
+  let body;
+  if (page === 'publicar') body = viewPublish();
+  else if (page === 'perfil') body = state.user ? viewProfile() : signInPrompt('Entre com Google para ver seu perfil.');
+  else if (page === 'user') body = viewUser();
+  else body = viewExplore();
+  $('#app').innerHTML = headerHTML() + `<main>${body}</main>`;
+}
+
+function signInPrompt(msg) {
+  return `<div class="page"><div class="center"><h2>Entre para continuar</h2>
+    <p class="muted">${esc(msg)}</p>
+    <button class="btn primary big" data-act="login">Entrar com Google</button></div></div>`;
+}
+
+function viewExplore() {
+  const sel = state.packs.find(p => p.id === state.selectedId) || filteredPacks()[0];
+  if (sel) state.selectedId = sel.id;
+  const tabs = [['all', 'Todos'], ['song', 'Músicas'], ['playlist', 'Playlists']];
+  return `<div class="explore">
+    <aside class="detail">${sel ? detailHTML(sel)
+      : '<div class="empty">Ainda não há nada publicado.<br><br>Seja o primeiro a publicar!</div>'}</aside>
+    <section class="list">
+      <div class="toolbar">
+        <div class="tabs">${tabs.map(([k, l]) =>
+          `<button class="tab ${state.filter === k ? 'on' : ''}" data-act="filter" data-arg="${k}">${l}</button>`).join('')}</div>
+        <input type="search" class="search" id="search" placeholder="Pesquisar mapa ou autor..." value="${esc(state.query)}">
+      </div>
+      <div class="cards" id="cards">${cardsHTML()}</div>
+    </section>
+  </div>`;
+}
+
+function cardsHTML() {
+  const list = filteredPacks();
+  return list.length ? list.map(p => cardHTML(p)).join('') : '<div class="empty">Nada encontrado.</div>';
+}
+
+function cardHTML(p, extra = '') {
+  const pub = p.profiles || {};
+  const n = (p.tracks || []).length;
+  return `<div class="card ${colorFor(p.id)} ${p.id === state.selectedId ? 'active' : ''}" data-id="${esc(p.id)}" data-act="select" data-arg="${esc(p.id)}">
+    <div class="cthumb">${p.icon_path ? `<img src="${esc(publicUrl(p.icon_path))}" alt="" referrerpolicy="no-referrer">` : esc(initials(p.title))}</div>
+    <div class="cinfo">
+      <div class="ctitle">${esc(p.title)}</div>
+      <div class="cby">Mapeado por ${esc(p.mapper || pub.name || 'Anônimo')}</div>
+      <div class="cstats">${p.kind === 'playlist' ? 'Playlist' : 'Música'} · ${n} ${n === 1 ? 'faixa' : 'faixas'} · ↓ ${fmt(p.downloads)}</div>
+    </div>${extra}</div>`;
+}
+
+function detailHTML(p) {
+  const pub = p.profiles || {};
+  const tracks = p.tracks || [];
+  const c = colorFor(p.id);
+  return `${p.banner_path ? `<img class="dbanner ${c}" src="${esc(publicUrl(p.banner_path))}" alt="" referrerpolicy="no-referrer">` : ''}
+    <div class="dthumb ${c}">${p.icon_path
+      ? `<img src="${esc(publicUrl(p.icon_path))}" alt="" referrerpolicy="no-referrer">`
+      : esc(initials(p.title))}</div>
+    <div class="dtitle">${esc(p.title)}</div>
+    <div class="dtype">&lt; ${p.kind === 'playlist' ? 'Playlist' : 'Música'} &gt;</div>
+    <div class="dstats">
+      <div>♪ ${tracks.length} ${tracks.length === 1 ? 'faixa' : 'faixas'}</div>
+      <div>↓ ${fmt(p.downloads)} downloads</div>
+      <div>${p.created_at ? 'Publicado em ' + new Date(p.created_at).toLocaleDateString('pt-BR') : ''}</div>
+      <div>Mapeado por ${esc(p.mapper || pub.name || 'Anônimo')}</div>
+    </div>
+    <button class="btn primary big" data-act="download" data-arg="${esc(p.id)}">Baixar .rbpack</button>
+    ${tracks.length ? `<div class="tracklist">${tracks.map((t, i) =>
+      `<button class="track" data-act="play" data-arg="${esc(publicUrl(t.path))}"><i>${i + 1}</i>${esc(t.name)}</button>`).join('')}</div>` : ''}
+    <div class="by">Publicado por <a data-act="user" data-arg="${esc(p.owner_id)}">${esc(pub.name || 'Anônimo')}</a>${pub.show_region && pub.region ? ` · ${esc(pub.region)}` : ''}</div>`;
+}
+
+function profileHeadHTML({ name, avatar, region, showRegion, count }) {
+  return `<div class="profile-head">${avatarHTML(avatar, name)}
+    <div><div class="pname">${esc(name || 'Usuário')}</div>
+    ${showRegion && region ? `<div class="pregion">${esc(region)}</div>` : ''}
+    <div class="pcount">${count} ${count === 1 ? 'publicação' : 'publicações'}</div></div></div>`;
+}
+
+function viewProfile() {
+  const p = state.profile || {};
+  const mine = state.packs.filter(x => x.owner_id === state.user.id);
+  return `<div class="page"><div class="wrap">
+    ${profileHeadHTML({ name: p.name, avatar: p.avatar_url, region: p.region, showRegion: p.show_region, count: mine.length })}
+    <div class="setting">
+      <div class="field" style="margin:0">Região</div>
+      <input type="text" id="region" placeholder="Ex.: Goiânia, GO" value="${esc(p.region || '')}" style="margin-top:8px">
+      <label><input type="checkbox" id="showRegion" ${p.show_region ? 'checked' : ''}> Mostrar minha região no meu perfil</label>
+      <div class="note">Se a opção estiver desmarcada, a região não é salva.</div>
+      <div style="margin-top:12px"><button class="btn primary" data-act="saveRegion">Salvar</button></div>
+    </div>
+    <h3 class="sect">Minhas publicações (${mine.length})</h3>
+    <div class="cards-plain">${mine.length
+      ? mine.map(x => cardHTML(x, `<button class="btn danger cdel" data-act="delete" data-arg="${esc(x.id)}">Apagar</button>`)).join('')
+      : '<div class="empty">Você ainda não publicou nada.</div>'}</div>
+  </div></div>`;
+}
+
+function viewUser() {
+  if (state.viewUser === null) return '<div class="page"><div class="center"><p class="muted">Carregando perfil…</p></div></div>';
+  if (state.viewUser === false) return '<div class="page"><div class="center"><h2>Perfil não encontrado</h2></div></div>';
+  const u = state.viewUser;
+  const packs = state.packs.filter(x => x.owner_id === u.id);
+  return `<div class="page"><div class="wrap">
+    ${profileHeadHTML({ name: u.name, avatar: u.avatar_url, region: u.region, showRegion: u.show_region, count: packs.length })}
+    <h3 class="sect">Publicações</h3>
+    <div class="cards-plain">${packs.length ? packs.map(x => cardHTML(x)).join('')
+      : '<div class="empty">Nenhuma publicação ainda.</div>'}</div>
+  </div></div>`;
+}
+
+function viewPublish() {
+  if (!state.user) return signInPrompt('Publicar precisa de login com Google. Baixar você pode sem entrar.');
+  return `<div class="page"><div class="wrap">
+    <div class="dropzone" id="drop" data-act="pick">
+      <div class="dz-big">ARRASTE SEU .RBPACK AQUI</div>
+      <div class="dz-small">ou clique para escolher · também aceita MP3 + ícone + banner soltos (vira música ou playlist)</div>
+    </div>
+    <input type="file" id="fileinput" multiple hidden accept=".rbpack,.zip,.mp3,.ogg,.wav,.m4a,.png,.jpg,.jpeg,.webp,.gif">
+    ${state.drafts.map(draftHTML).join('')}
+  </div></div>`;
+}
+
+function draftHTML(d) {
+  const n = d.tracks.length;
+  return `<div class="draft">
+    <div>
+      <div class="dr-icon">${d.iconUrl ? `<img src="${d.iconUrl}" alt="">` : esc(initials(d.title))}</div>
+      ${d.bannerUrl ? `<img class="dr-banner" src="${d.bannerUrl}" alt="" style="object-fit:cover;display:block">` : '<div class="dr-banner">sem banner</div>'}
+    </div>
+    <div>
+      <div class="dtype" style="text-align:left;margin-bottom:12px">&lt; ${n > 1 ? 'PLAYLIST' : 'MÚSICA'} &gt; · ${n} ${n === 1 ? 'faixa' : 'faixas'} detectadas automaticamente</div>
+      <label class="field">Nome<input type="text" data-draft="${d.id}" data-field="title" value="${esc(d.title)}"></label>
+      <label class="field">Mapeado por<input type="text" data-draft="${d.id}" data-field="mapper" value="${esc(d.mapper)}"></label>
+      <label class="field">Descrição (opcional)<textarea data-draft="${d.id}" data-field="description">${esc(d.description)}</textarea></label>
+      <ul class="dr-tracks">${d.tracks.map(t => `<li>${esc(t.name)}</li>`).join('')}</ul>
+      <div class="dr-actions">
+        <button class="btn primary" data-act="publish" data-arg="${d.id}">Publicar</button>
+        <button class="btn" data-act="removeDraft" data-arg="${d.id}">Remover</button>
+      </div>
+      <div class="status" id="st-${d.id}"></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- eventos (delegação) ---------- */
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const fn = ACTIONS[el.dataset.act];
+  if (fn) fn(el.dataset.arg);
+});
+
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.id === 'search') {
+    state.query = t.value;
+    const c = $('#cards');
+    if (c) c.innerHTML = cardsHTML();
+  } else if (t.dataset && t.dataset.draft) {
+    const d = state.drafts.find(x => x.id === t.dataset.draft);
+    if (d) d[t.dataset.field] = t.value;
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'fileinput') {
+    handleFiles([...e.target.files]);
+    e.target.value = '';
+  }
+});
+
+document.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const dz = e.target.closest?.('#drop');
+  if (dz) dz.classList.add('over');
+});
+document.addEventListener('dragleave', (e) => {
+  const dz = e.target.closest?.('#drop');
+  if (dz) dz.classList.remove('over');
+});
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const dz = e.target.closest?.('#drop');
+  if (dz) {
+    dz.classList.remove('over');
+    handleFiles([...e.dataTransfer.files]);
+  }
+});
+
+window.addEventListener('hashchange', onRoute);
+
+/* ---------- início ---------- */
+async function init() {
+  if (!CONFIGURED) { render(); return; }
+
+  const { data } = await sb.auth.getSession();
+  await setUser(data.session?.user ?? null);
+
+  sb.auth.onAuthStateChange(async (_event, session) => {
+    const u = session?.user ?? null;
+    if ((u?.id || null) === (state.user?.id || null)) return;
+    await setUser(u);
+    render();
+  });
+
+  try {
+    await loadPacks();
+  } catch (err) {
+    console.error(err);
+    alert('Erro ao carregar publicações: ' + err.message);
+  }
+  onRoute();
+}
+
+init();
+</script>
+</body>
+</html>
